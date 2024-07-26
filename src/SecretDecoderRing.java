@@ -44,7 +44,6 @@ public class SecretDecoderRing {
                 new Instruction(2, 3, 0),
                 new Instruction(0, 2, 1)
         );
-
         String decipheredMessage = decipherMessage(message, shifts);
         System.out.println("Deciphered Message: " + decipheredMessage);
     }
