@@ -8,7 +8,6 @@ public class ChallengingHikingTrail {
         for (int i = 0; i < n; i++) {
             dp[i] = 1;
         }
-
         int max = 1;
         for (int i = 1; i < n; i++) {
             if(trial[i] > trial[i-1]  && (trial[i] - trial[i-1]) <= k) {
@@ -29,10 +28,8 @@ public class ChallengingHikingTrail {
         for (int i = 0; i < n; i++) {
             trail[i] = scanner.nextInt();
         }
-
         System.out.print("Enter the elevation gain limit (k): ");
         int k = scanner.nextInt();
-
         System.out.println("Longest continuous hike length: " + longestContinuousHike(trail, k));
 
 

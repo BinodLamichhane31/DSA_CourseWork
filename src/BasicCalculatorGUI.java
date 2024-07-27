@@ -2,99 +2,171 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.Stack;
 
-public class BasicCalculatorGUI extends JFrame implements ActionListener {
-    private JTextField input;
-    private JLabel result;
-    private JButton button;
-    public BasicCalculatorGUI(){
+public class BasicCalculatorGUI extends JFrame {
+    public BasicCalculatorGUI() {
         setTitle("Basic Calculator");
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(400,600);
-        setBackground(Color.BLACK);
+        setSize(400, 200);
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
 
-        input = new JTextField(10);
-        input.setPreferredSize(new Dimension(400,100));
-        input.setBackground(Color.BLACK);
-        input.setForeground(Color.white);
-        input.setFont(new Font("Arial",Font.PLAIN,25));
+        JPanel mainPanel = new JPanel(new BorderLayout(4, 4));
 
-        result = new JLabel("Result");
-        result.setPreferredSize(new Dimension(400, 50));
-        result.setForeground(Color.WHITE);
-        result.setFont(new Font("Arial", Font.PLAIN, 20));
+        JTextField display = new JTextField();
+        mainPanel.add(display, BorderLayout.NORTH);
 
-        JPanel panel = new JPanel();
-        panel.setBackground(Color.BLACK);
-        JPanel buttonPanel = new JPanel();
-        buttonPanel.setBackground(Color.BLACK);
-        buttonPanel.setLayout(new GridLayout(5, 4, 5, 5));
+        JPanel buttonPanel = new JPanel(new GridLayout(1, 3, 4, 4));
+        JButton calculateButton = new JButton("Calculate");
+        JButton backButton = new JButton("⌫");
+        JButton clearButton = new JButton("Clear");
+        buttonPanel.add(calculateButton);
+        buttonPanel.add(backButton);
+        buttonPanel.add(clearButton);
 
+        mainPanel.add(buttonPanel, BorderLayout.CENTER);
 
-        String[] buttons = {
-                "AC", "(", ")", "/",
-                "7", "8", "9", "X",
-                "4", "5", "6", "-",
-                "1", "2", "3", "+",
-                "0",".","⌫","="
-        };
+        JLabel resultLabel = new JLabel("Result: ");
+        JLabel resultValue = new JLabel("");
+        JPanel resultPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        resultPanel.add(resultLabel);
+        resultPanel.add(resultValue);
+        mainPanel.add(resultPanel, BorderLayout.SOUTH);
 
-        // Add buttons to the panel
-        for (String text : buttons) {
-            JButton button = new JButton(text);
-            setButtonColor(button, text);
-            button.setOpaque(true);
-            button.setBorderPainted(false);
-            button.setPreferredSize(new Dimension(30, 30));
-            button.addActionListener(this);
-            buttonPanel.add(button);
-        }
-
-        setLayout(new BorderLayout());
-        add(input,BorderLayout.NORTH);
-        add(buttonPanel,BorderLayout.CENTER);
-        add(result, BorderLayout.AFTER_LAST_LINE);
-
-
+        setContentPane(mainPanel);
+        pack();
         setVisible(true);
-    }
 
-    private void setButtonColor(JButton button, String text) {
-        if (text.equals("+") || text.equals("-") || text.equals("X") || text.equals("/") || text.equals("=") || text.equals("⌫")) {
-            button.setBackground(Color.decode("#189AB4"));
-        } else if (text.equals("AC") || text.equals("(") || text.equals(")")) {
-            button.setBackground(Color.decode("#D4F1F4"));
-        } else if (text.matches("[0-9]") || text.equals(".")) {
-            button.setBackground(Color.decode("#75E6DA"));
-        }
-    }
-
-    @Override
-    public void actionPerformed(ActionEvent e) {
-        String currText = input.getText();
-        String command = e.getActionCommand();
-
-        switch (command) {
-            case "AC":
-                input.setText("");
-                break;
-            case "⌫":
-                if (!currText.isEmpty()){
-                    input.setText(currText.substring(0, currText.length()-1));
+        calculateButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                try {
+                    String infix = display.getText();
+                    infix = handleImplicitMultiplication(infix);
+                    String postfix = infixToPostfix(infix);
+                    double result = evalPostfix(postfix);
+                    resultValue.setText(String.valueOf(result));
+                } catch (Exception ex) {
+                    resultValue.setText("Error");
                 }
-                break;
-            default:
-                input.setText(currText+command);
-                break;
+            }
+        });
 
+        clearButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                display.setText("");
+                resultValue.setText("");
+            }
+        });
 
-        }
-
-
+        backButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String currentText = display.getText();
+                if (!currentText.isEmpty()) {
+                    display.setText(currentText.substring(0, currentText.length() - 1));
+                }
+            }
+        });
     }
-
 
     public static void main(String[] args) {
         new BasicCalculatorGUI();
+    }
+
+    private static String handleImplicitMultiplication(String infix) {
+        StringBuilder modifiedInfix = new StringBuilder();
+        for (int i = 0; i < infix.length(); i++) {
+            char c = infix.charAt(i);
+            modifiedInfix.append(c);
+            if (i + 1 < infix.length()) {
+                char next = infix.charAt(i + 1);
+                if (c == ')' && Character.isDigit(next)) {
+                    modifiedInfix.append('*');
+                }
+                if (Character.isDigit(c) && next == '(') {
+                    modifiedInfix.append('*');
+                }
+            }
+        }
+        return modifiedInfix.toString();
+    }
+
+    public static String infixToPostfix(String infix) {
+        StringBuilder postfix = new StringBuilder();
+        Stack<Character> stack = new Stack<>();
+        for (int i = 0; i < infix.length(); i++) {
+            char c = infix.charAt(i);
+
+            if (Character.isDigit(c)) {
+                postfix.append(c);
+                while (i + 1 < infix.length() && Character.isDigit(infix.charAt(i + 1))) {
+                    postfix.append(infix.charAt(++i));
+                }
+                postfix.append(' ');
+            } else if (c == '(') {
+                stack.push(c);
+            } else if (c == ')') {
+                while (!stack.isEmpty() && stack.peek() != '(') {
+                    postfix.append(stack.pop()).append(' ');
+                }
+                stack.pop(); // Remove '(' from the stack
+            } else if (c == ' ') {
+                continue;
+            } else {
+                while (!stack.isEmpty() && precedence(c) <= precedence(stack.peek())) {
+                    postfix.append(stack.pop()).append(' ');
+                }
+                stack.push(c);
+            }
+        }
+
+        while (!stack.isEmpty()) {
+            postfix.append(stack.pop()).append(' ');
+        }
+
+        return postfix.toString().trim();
+    }
+
+    public static int precedence(char ch) {
+        return switch (ch) {
+            case '+', '-' -> 1;
+            case '*', '/' -> 2;
+            case '^' -> 3;
+            default -> -1;
+        };
+    }
+
+    public static double evalPostfix(String postfix) {
+        Stack<Double> stack = new Stack<>();
+        String[] postfixChars = postfix.split("\\s+");
+        for (String ch : postfixChars) {
+            if (ch.isEmpty()) continue;
+            char c = ch.charAt(0);
+
+            if (Character.isDigit(c) || (c == '-' && ch.length() > 1)) {
+                stack.push(Double.parseDouble(ch));
+            }
+            else {
+                double val1 = stack.pop();
+                double val2 = stack.pop();
+                switch (c) {
+                    case '+':
+                        stack.push(val2 + val1);
+                        break;
+                    case '-':
+                        stack.push(val2 - val1);
+                        break;
+                    case '*':
+                        stack.push(val2 * val1);
+                        break;
+                    case '/':
+                        stack.push(val2 / val1);
+                        break;
+                }
+            }
+        }
+        return stack.pop();
     }
 }

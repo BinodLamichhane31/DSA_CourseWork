@@ -7,7 +7,6 @@ public class MovieTheaterSeat {
                 }
             }
         }
-
         return false;
     }
     public static void main(String[] args) {
