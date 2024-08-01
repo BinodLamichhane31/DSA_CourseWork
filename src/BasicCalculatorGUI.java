@@ -43,6 +43,7 @@ public class BasicCalculatorGUI extends JFrame {
                 try {
                     String infix = display.getText();
                     infix = handleImplicitMultiplication(infix);
+                    infix = handleBrackets(infix);
                     String postfix = infixToPostfix(infix);
                     double result = evalPostfix(postfix);
                     resultValue.setText(String.valueOf(result));
@@ -88,9 +89,27 @@ public class BasicCalculatorGUI extends JFrame {
                 if (Character.isDigit(c) && next == '(') {
                     modifiedInfix.append('*');
                 }
+                if (c == ']' && Character.isDigit(next)) {
+                    modifiedInfix.append('*');
+                }
+                if (Character.isDigit(c) && next == '[') {
+                    modifiedInfix.append('*');
+                }
+                if (c == '}' && Character.isDigit(next)) {
+                    modifiedInfix.append('*');
+                }
+                if (Character.isDigit(c) && next == '{') {
+                    modifiedInfix.append('*');
+                }
             }
         }
         return modifiedInfix.toString();
+    }
+
+    private static String handleBrackets(String infix) {
+        infix = infix.replace('[', '(').replace(']', ')');
+        infix = infix.replace('{', '(').replace('}', ')');
+        return infix;
     }
 
     public static String infixToPostfix(String infix) {
@@ -111,7 +130,7 @@ public class BasicCalculatorGUI extends JFrame {
                 while (!stack.isEmpty() && stack.peek() != '(') {
                     postfix.append(stack.pop()).append(' ');
                 }
-                stack.pop(); // Remove '(' from the stack
+                stack.pop();
             } else if (c == ' ') {
                 continue;
             } else {
