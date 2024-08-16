@@ -1,14 +1,19 @@
+import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
+import javax.imageio.ImageWriteParam;
+import javax.imageio.ImageWriter;
+import javax.imageio.stream.ImageOutputStream;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
-public class ImageResizer {
+public class ImageCompressor {
 
     private final JFrame frame;
     private final JProgressBar overallProgressBar;
@@ -23,7 +28,7 @@ public class ImageResizer {
     public static void main(String[] args) {
         EventQueue.invokeLater(() -> {
             try {
-                ImageResizer window = new ImageResizer();
+                ImageCompressor window = new ImageCompressor();
                 window.frame.setVisible(true);
             } catch (Exception e) {
                 e.printStackTrace();
@@ -31,7 +36,7 @@ public class ImageResizer {
         });
     }
 
-    public ImageResizer() {
+    public ImageCompressor() {
         frame = new JFrame();
         frame.setTitle("Image Converter");
         frame.setBounds(100, 100, 600, 400);
@@ -79,8 +84,11 @@ public class ImageResizer {
             for (File file : selectedFiles) {
                 statusArea.append(file.getAbsolutePath() + "\n");
             }
+        } else {
+            statusArea.append("No files selected.\n");
         }
     }
+
 
     private void startConversion() {
         if (selectedFiles == null || selectedFiles.length == 0) {
@@ -108,21 +116,16 @@ public class ImageResizer {
                     publish(new ImageConversionProgress(file.getName(), i + 1, totalFiles, "Processing"));
 
                     try {
-                        // Load image
-                        BufferedImage image = ImageIO.read(file);
-
-                        // Convert image (resize example)
-                        BufferedImage resizedImage = resizeImage(image, 800, 600); // Resize to 800x600
-
-                        // Save converted image
-                        File outputFile = new File(OUTPUT_DIR + file.getName());
-                        ImageIO.write(resizedImage, "png", outputFile);
-
+                        // Compress and save the image
+                        compressImage(file);
                         publish(new ImageConversionProgress(file.getName(), i + 1, totalFiles, "Completed"));
                     } catch (IOException e) {
                         e.printStackTrace();
                         publish(new ImageConversionProgress(file.getName(), i + 1, totalFiles, "Error"));
                     }
+
+                    int progress = (int) (((i + 1) / (double) totalFiles) * 100);
+                    setProgress(progress);
                 }
                 return null;
             }
@@ -132,9 +135,7 @@ public class ImageResizer {
                 for (ImageConversionProgress progress : chunks) {
                     statusArea.append(String.format("Image: %s, %s\n", progress.fileName, progress.status));
                 }
-                // Update overall progress bar
-                int progress = (int) ((getProgress() / 100.0) * 100);
-                overallProgressBar.setValue(progress);
+                overallProgressBar.setValue(getProgress());
             }
 
             @Override
@@ -142,14 +143,24 @@ public class ImageResizer {
                 try {
                     get(); // Ensure that any exception during processing is thrown
                     statusArea.append("All conversions completed.\n");
-                } catch (InterruptedException | ExecutionException e) {
-                    statusArea.append("Conversion interrupted or failed.\n");
+                } catch (InterruptedException e) {
+                    statusArea.append("Conversion interrupted.\n");
+                    e.printStackTrace();
+                } catch (ExecutionException e) {
+                    statusArea.append("Conversion failed.\n");
+                    e.getCause().printStackTrace();
                 } finally {
                     startButton.setEnabled(true);
                     cancelButton.setEnabled(false);
                 }
             }
         };
+
+        worker.addPropertyChangeListener(evt -> {
+            if ("progress".equals(evt.getPropertyName())) {
+                overallProgressBar.setValue((Integer) evt.getNewValue());
+            }
+        });
 
         worker.execute();
     }
@@ -163,13 +174,50 @@ public class ImageResizer {
         cancelButton.setEnabled(false);
     }
 
-    private BufferedImage resizeImage(BufferedImage originalImage, int targetWidth, int targetHeight) {
-        Image tmp = originalImage.getScaledInstance(targetWidth, targetHeight, Image.SCALE_SMOOTH);
-        BufferedImage resizedImage = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g2d = resizedImage.createGraphics();
-        g2d.drawImage(tmp, 0, 0, null);
-        g2d.dispose();
-        return resizedImage;
+
+
+    private void compressImage(File inputFile) throws IOException {
+        if (!inputFile.exists()) {
+            throw new IOException("File does not exist: " + inputFile.getAbsolutePath());
+        }
+
+        // Check if the file has a supported extension
+        String fileName = inputFile.getName().toLowerCase();
+        if (!fileName.endsWith(".jpg") && !fileName.endsWith(".jpeg")) {
+            throw new IOException("Unsupported file format: " + fileName);
+        }
+
+        try {
+            BufferedImage inputImage = ImageIO.read(inputFile);
+            if (inputImage == null) {
+                throw new IOException("Failed to load image: " + fileName);
+            }
+
+            Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName("jpg");
+            if (!writers.hasNext()) {
+                throw new IOException("No writers found for jpg format");
+            }
+            ImageWriter writer = writers.next();
+
+            // Ensure the output file has the correct extension
+            String outputFileName = fileName.endsWith(".jpg") ? fileName : fileName.replace(".jpeg", ".jpg");
+            File outputFile = new File(OUTPUT_DIR + outputFileName);
+            ImageOutputStream outputStream = ImageIO.createImageOutputStream(outputFile);
+            writer.setOutput(outputStream);
+
+            ImageWriteParam params = writer.getDefaultWriteParam();
+            params.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+            params.setCompressionQuality(0.5f); // Adjust the quality level as needed
+
+            writer.write(null, new IIOImage(inputImage, null, null), params);
+
+            outputStream.close();
+            writer.dispose();
+        } catch (IOException e) {
+            statusArea.append("Error compressing image: " + inputFile.getName() + "\n");
+            e.printStackTrace(); // Print the stack trace for debugging
+            throw e; // Rethrow to let the SwingWorker handle it
+        }
     }
 
     private static class ImageConversionProgress {
