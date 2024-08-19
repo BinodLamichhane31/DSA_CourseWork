@@ -1,5 +1,6 @@
+package Question1;
+
 import java.util.Arrays;
-import java.util.Comparator;
 
 public class ClassSchedule {
     public static int mostUsedClassroom(int n, int[][] classes){

@@ -1,3 +1,5 @@
+package Question2;
+
 public class MovieTheaterSeat {
     public static boolean canFriendsSeatTogether(int[] nums, int indexDiff, int valueDiff){
         for(int i=0;i<nums.length;i++){
