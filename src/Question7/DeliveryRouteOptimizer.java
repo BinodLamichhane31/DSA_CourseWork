@@ -19,8 +19,8 @@ public class DeliveryRouteOptimizer {
     private static List<String> route = new ArrayList<>();
     private static Map<String, Integer> vehicleMaxWeight = Map.of(
             "Bike", 50,  // Max weight in kg
-            "Car", 150,
-            "Truck", 500
+            "Car", 200,
+            "Truck", 1000
     );
 
     public static void main(String[] args) {
@@ -74,7 +74,7 @@ public class DeliveryRouteOptimizer {
         leftPanel.add(deliveryListScrollPane, BorderLayout.CENTER);
 
         JPanel dropdownPanel = new JPanel(new GridLayout(1, 2, 10, 0));
-        String[] vehicles = {"Bike", "Car", "Truck"};
+        String[] vehicles = {"Bike-50KG", "Car-200KG", "Truck-1000KG"};
         JComboBox<String> vehicleComboBox = new JComboBox<>(vehicles);
         dropdownPanel.add(new JLabel("Select Vehicle:"));
         dropdownPanel.add(vehicleComboBox);
